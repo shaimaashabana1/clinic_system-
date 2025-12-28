@@ -1,57 +1,39 @@
 import csv
 
 class MedicalRecordManager:
-    def __init__(self, record_file="medical_records.csv"):
-        self.record_file = record_file
-        self.create_file_if_not_exist()
+    def __init__(self, file="medical_records.csv"):
+        self.file = file
+        self._init_file()
 
-    def create_file_if_not_exist(self):
+    def _init_file(self):
         try:
-            with open(self.record_file, "r"):
-                pass
+            open(self.file, "r").close()
         except FileNotFoundError:
-            with open(self.record_file, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["record_id", "patient_id", "doctor_id", "diagnosis", "treatment", "date"])
+            with open(self.file, "w", newline="") as f:
+                csv.writer(f).writerow(
+                    ["appointment_id", "diagnosis", "treatment"]
+                )
 
-    def add_record(self, record_id, patient_id, doctor_id, diagnosis, treatment, date):
-        with open(self.record_file, "a", newline="") as f:
-            csv.writer(f).writerow([record_id, patient_id, doctor_id, diagnosis, treatment, date])
-        print("Medical record added.")
-
-    def search_by_patient(self, patient_id):
-        try:
-            with open(self.record_file, "r") as f:
-                rows = list(csv.reader(f))
-        except:
-            print("File missing.")
-            return
-        
-        print(f"\n--- Records for Patient {patient_id} ---")
-        for row in rows[1:]:
-            if row[1] == str(patient_id):
-                print(row)
-
-    def delete_record(self, record_id):
-        try:
-            with open(self.record_file, "r") as f:
-                rows = list(csv.reader(f))
-        except:
-            print("Missing file.")
-            return
-
-        new_rows = [rows[0]]
-        deleted = False
+    # FR: Record / Update Diagnosis
+    def record_diagnosis(self, appointment_id, diagnosis, treatment):
+        with open(self.file, "r") as f:
+            rows = list(csv.reader(f))
 
         for row in rows[1:]:
-            if row[0] != str(record_id):
-                new_rows.append(row)
-            else:
-                deleted = True
-
-        if deleted:
-            with open(self.record_file, "w", newline="") as f:
-                csv.writer(f).writerows(new_rows)
-            print("Record deleted.")
+            if row[0] == str(appointment_id):
+                row[1] = diagnosis
+                row[2] = treatment
+                break
         else:
-            print("Record not found.")
+            rows.append([appointment_id, diagnosis, treatment])
+
+        with open(self.file, "w", newline="") as f:
+            csv.writer(f).writerows(rows)
+
+    # FR: View Diagnosis
+    def view_diagnosis(self, appointment_id):
+        with open(self.file, "r") as f:
+            return [
+                r for r in list(csv.reader(f))[1:]
+                if r[0] == str(appointment_id)
+            ]

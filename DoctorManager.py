@@ -1,68 +1,57 @@
 import csv
 
 class DoctorManager:
-    def __init__(self, doctor_file="doctors.csv"):
-        self.doctor_file = doctor_file
-        self.create_file_if_not_exist()
+    def __init__(self, file="doctors.csv"):
+        self.file = file
+        self._init_file()
 
-    def create_file_if_not_exist(self):
+    def _init_file(self):
         try:
-            with open(self.doctor_file, "r"):
-                pass
+            open(self.file, "r").close()
         except FileNotFoundError:
-            with open(self.doctor_file, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["doctor_id", "name", "specialty", "phone"])
+            with open(self.file, "w", newline="") as f:
+                csv.writer(f).writerow(
+                    ["doctor_id", "name", "specialty"]
+                )
 
-    def add_doctor(self, doctor_id, name, specialty, phone):
-        with open(self.doctor_file, "a", newline="") as f:
-            csv.writer(f).writer.writerow([doctor_id, name, specialty, phone])
-        print("Doctor added.")
+    def _generate_id(self):
+        with open(self.file, "r") as f:
+            return len(list(csv.reader(f)))
 
-    def update_doctor(self, doctor_id, name=None, specialty=None, phone=None):
-        try:
-            with open(self.doctor_file, "r") as f:
-                rows = list(csv.reader(f))
-        except:
-            print("File missing.")
-            return
+    # FR: Add Doctor
+    def add_doctor(self, name, specialty):
+        did = self._generate_id()
+        with open(self.file, "a", newline="") as f:
+            csv.writer(f).writerow([did, name, specialty])
+        return did
 
-        updated = False
+    # FR: Search Doctor (partial specialty)
+    def search_doctor(self, keyword):
+        with open(self.file, "r") as f:
+            return [
+                r for r in list(csv.reader(f))[1:]
+                if keyword.lower() in r[2].lower()
+            ]
+
+    # FR: Update Doctor
+    def update_doctor(self, doctor_id, name=None, specialty=None):
+        with open(self.file, "r") as f:
+            rows = list(csv.reader(f))
+
         for row in rows[1:]:
             if row[0] == str(doctor_id):
                 if name: row[1] = name
                 if specialty: row[2] = specialty
-                if phone: row[3] = phone
-                updated = True
-                break
 
-        if updated:
-            with open(self.doctor_file, "w", newline="") as f:
-                csv.writer(f).writerows(rows)
-            print("Doctor updated.")
-        else:
-            print("Doctor not found.")
+        with open(self.file, "w", newline="") as f:
+            csv.writer(f).writerows(rows)
 
+    # FR: Delete Doctor
     def delete_doctor(self, doctor_id):
-        try:
-            with open(self.doctor_file, "r") as f:
-                rows = list(csv.reader(f))
-        except:
-            print("File missing.")
-            return
+        with open(self.file, "r") as f:
+            rows = list(csv.reader(f))
 
-        new_rows = [rows[0]]
-        deleted = False
+        rows = [rows[0]] + [r for r in rows[1:] if r[0] != str(doctor_id)]
 
-        for row in rows[1:]:
-            if row[0] != str(doctor_id):
-                new_rows.append(row)
-            else:
-                deleted = True
-
-        if deleted:
-            with open(self.doctor_file, "w", newline="") as f:
-                csv.writer(f).writerows(new_rows)
-            print("Doctor deleted.")
-        else:
-            print("Doctor not found.")
+        with open(self.file, "w", newline="") as f:
+            csv.writer(f).writerows(rows)

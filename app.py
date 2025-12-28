@@ -4,161 +4,204 @@ from DoctorManager import DoctorManager
 from AppointmentManager import AppointmentManager
 from MedicalRecordManager import MedicalRecordManager
 
-# --- Initialize managers ---
+# Initialize Managers
 patients = PatientManager()
 doctors = DoctorManager()
 appointments = AppointmentManager()
 records = MedicalRecordManager()
 
-# --- UI ---
-st.title("Clinic Management System")
+st.set_page_config(page_title="Clinic Management System", layout="centered")
+st.title("🏥 Clinic Management System")
 
 section = st.sidebar.selectbox(
     "Choose Section",
-    ["Patients", "Doctors", "Appointments", "Medical Records"]
+    [
+        "Patients",
+        "Doctors",
+        "Appointments",
+        "Medical Diagnosis",
+        "Daily Agenda",
+        "Doctor Schedule"
+    ]
 )
 
-# ================================================================
-# --------------------- PATIENTS SECTION --------------------------
-# ================================================================
+# ==========================================================
+# PATIENTS
+# ==========================================================
 if section == "Patients":
-    st.header("Patient Manager")
+    action = st.selectbox(
+        "Action",
+        ["Add Patient", "Search Patient", "Update Patient", "Delete Patient", "List Patients"]
+    )
 
-    action = st.selectbox("Choose Action", ["Add Patient", "Search Patient", "Delete Patient", "Update Patient"])
-
-    # Add
     if action == "Add Patient":
-        pid = st.text_input("Patient ID")
         name = st.text_input("Name")
-        age = st.number_input("Age", min_value=1, max_value=120)
-        gender = st.selectbox("Gender", ["Male", "Female"])
-        phone = st.text_input("Phone Number")
+        age = st.number_input("Age", 1, 120)
+        phone = st.text_input("Phone")
 
         if st.button("Add"):
-            patients.add_patient(pid, name, age, gender, phone)
-            st.success("Patient Added Successfully")
+            pid = patients.add_patient(name, age, phone)
+            st.success(f"Patient added with ID: {pid}")
 
-    # Search
     elif action == "Search Patient":
         pid = st.text_input("Patient ID")
         if st.button("Search"):
             result = patients.search_patient(pid)
-            st.write(result if result else "Not Found")
+            if result:
+                st.write(result)
+            else:
+                st.error("Patient not found")
 
-    # Delete
-    elif action == "Delete Patient":
-        pid = st.text_input("Patient ID")
-        if st.button("Delete"):
-            patients.delete_patient(pid)
-            st.success("Deleted (If ID existed).")
-
-    # Update
     elif action == "Update Patient":
         pid = st.text_input("Patient ID")
-
-        name = st.text_input("New Name (optional)")
-        age = st.number_input("New Age (optional)", min_value=0, max_value=120)
-        gender = st.selectbox("New Gender (optional)", ["", "Male", "Female"])
-        phone = st.text_input("New Phone (optional)")
+        name = st.text_input("New Name")
+        age = st.text_input("New Age")
+        phone = st.text_input("New Phone")
 
         if st.button("Update"):
             patients.update_patient(
                 pid,
                 name if name else None,
-                age if age > 0 else None,
-                gender if gender else None,
-                phone if phone else None,
+                age if age else None,
+                phone if phone else None
             )
-            st.success("Updated (If ID existed).")
+            st.success("Patient updated")
 
-# ================================================================
-# --------------------- DOCTORS SECTION --------------------------
-# ================================================================
+    elif action == "Delete Patient":
+        pid = st.text_input("Patient ID")
+        if st.button("Delete"):
+            patients.delete_patient(pid)
+            st.success("Patient deleted (cascade applied)")
+
+    elif action == "List Patients":
+        st.table(patients.list_patients())
+
+# ==========================================================
+# DOCTORS
+# ==========================================================
 elif section == "Doctors":
-    st.header("Doctor Manager")
-
-    action = st.selectbox("Choose Action", ["Add Doctor", "Search Doctor"])
+    action = st.selectbox(
+        "Action",
+        ["Add Doctor", "Search Doctor", "Update Doctor", "Delete Doctor"]
+    )
 
     if action == "Add Doctor":
-        did = st.text_input("Doctor ID")
-        name = st.text_input("Name")
-        specialization = st.text_input("Specialization")
+        name = st.text_input("Doctor Name")
+        specialty = st.text_input("Specialty")
 
         if st.button("Add"):
-            doctors.add_doctor(did, name, specialization)
-            st.success("Doctor Added")
+            did = doctors.add_doctor(name, specialty)
+            st.success(f"Doctor added with ID: {did}")
 
     elif action == "Search Doctor":
-        did = st.text_input("Doctor ID")
+        keyword = st.text_input("Search by Specialty")
         if st.button("Search"):
-            st.write(doctors.search_doctor(did))
+            result = doctors.search_doctor(keyword)
+            st.table(result)
 
-# ================================================================
-# ------------------ APPOINTMENTS SECTION -------------------------
-# ================================================================
+    elif action == "Update Doctor":
+        did = st.text_input("Doctor ID")
+        name = st.text_input("New Name")
+        specialty = st.text_input("New Specialty")
+
+        if st.button("Update"):
+            doctors.update_doctor(
+                did,
+                name if name else None,
+                specialty if specialty else None
+            )
+            st.success("Doctor updated")
+
+    elif action == "Delete Doctor":
+        did = st.text_input("Doctor ID")
+        if st.button("Delete"):
+            doctors.delete_doctor(did)
+            st.success("Doctor deleted & appointments cancelled")
+
+# ==========================================================
+# APPOINTMENTS
+# ==========================================================
 elif section == "Appointments":
-    st.header("Appointment Manager")
+    action = st.selectbox(
+        "Action",
+        [
+            "Book Appointment",
+            "Update Appointment",
+            "Cancel Appointment"
+        ]
+    )
 
-    action = st.selectbox("Choose Action", ["Create", "Delete", "Update", "Search"])
-
-    if action == "Create":
-        aid = st.text_input("Appointment ID")
-        patient = st.text_input("Patient Name")
-        doctor = st.text_input("Doctor Name")
+    if action == "Book Appointment":
+        pid = st.text_input("Patient ID")
+        did = st.text_input("Doctor ID")
         date = st.text_input("Date (YYYY-MM-DD)")
         time = st.text_input("Time (HH:MM)")
 
-        if st.button("Create"):
-            appointments.create_appointment(aid, patient, doctor, date, time)
-            st.success("Appointment Created")
+        if st.button("Book"):
+            aid = appointments.book_appointment(pid, did, date, time)
+            if aid is None:
+                st.error("Invalid date format")
+            else:
+                st.success(f"Appointment booked with ID: {aid}")
 
-    elif action == "Delete":
+    elif action == "Update Appointment":
         aid = st.text_input("Appointment ID")
-        if st.button("Delete"):
-            appointments.delete_appointment(aid)
-            st.success("Deleted")
-
-    elif action == "Update":
-        aid = st.text_input("Appointment ID")
-        patient = st.text_input("New Patient Name (optional)")
-        doctor = st.text_input("New Doctor Name (optional)")
-        date = st.text_input("New Date (optional)")
-        time = st.text_input("New Time (optional)")
+        date = st.text_input("New Date")
+        time = st.text_input("New Time")
 
         if st.button("Update"):
             appointments.update_appointment(
                 aid,
-                patient if patient else None,
-                doctor if doctor else None,
                 date if date else None,
-                time if time else None,
+                time if time else None
             )
-            st.success("Updated")
+            st.success("Appointment updated")
 
-    elif action == "Search":
+    elif action == "Cancel Appointment":
         aid = st.text_input("Appointment ID")
-        if st.button("Search"):
-            st.write(appointments.search_appointment(aid))
+        if st.button("Cancel"):
+            appointments.cancel_appointment(aid)
+            st.success("Appointment cancelled")
 
-# ================================================================
-# ------------------ MEDICAL RECORDS SECTION ----------------------
-# ================================================================
-elif section == "Medical Records":
-    st.header("Medical Records Manager")
+# ==========================================================
+# MEDICAL DIAGNOSIS
+# ==========================================================
+elif section == "Medical Diagnosis":
+    action = st.selectbox(
+        "Action",
+        ["Record Diagnosis", "View Diagnosis"]
+    )
 
-    action = st.selectbox("Choose Action", ["Add Record", "Search Record"])
-
-    if action == "Add Record":
-        rid = st.text_input("Record ID")
-        pid = st.text_input("Patient ID")
+    if action == "Record Diagnosis":
+        aid = st.text_input("Appointment ID")
         diagnosis = st.text_area("Diagnosis")
         treatment = st.text_area("Treatment")
 
-        if st.button("Add"):
-            records.add_record(rid, pid, diagnosis, treatment)
-            st.success("Record Added")
+        if st.button("Save"):
+            records.record_diagnosis(aid, diagnosis, treatment)
+            st.success("Diagnosis saved")
 
-    elif action == "Search Record":
-        rid = st.text_input("Record ID")
-        if st.button("Search"):
-            st.write(records.search_record(rid))
+    elif action == "View Diagnosis":
+        aid = st.text_input("Appointment ID")
+        if st.button("View"):
+            result = records.view_diagnosis(aid)
+            st.write(result)
+
+# ==========================================================
+# DAILY AGENDA
+# ==========================================================
+elif section == "Daily Agenda":
+    date = st.text_input("Date (YYYY-MM-DD)")
+    if st.button("View"):
+        result = appointments.daily_agenda(date)
+        st.table(result)
+
+# ==========================================================
+# DOCTOR SCHEDULE
+# ==========================================================
+elif section == "Doctor Schedule":
+    did = st.text_input("Doctor ID")
+    date = st.text_input("Date (YYYY-MM-DD)")
+    if st.button("View"):
+        result = appointments.doctor_schedule(did, date)
+        st.table(result)
