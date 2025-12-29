@@ -1,39 +1,48 @@
-import csv
+import csv, os
 
 class MedicalRecordManager:
-    def __init__(self, file="medical_records.csv"):
+    def __init__(self, file="records.csv"):
         self.file = file
-        self._init_file()
+        if not os.path.exists(self.file):
+            with open(self.file, "w", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow(["record_id", "appointment_id", "diagnosis", "medication"])
 
-    def _init_file(self):
+    def _next_id(self):
         try:
-            open(self.file, "r").close()
-        except FileNotFoundError:
-            with open(self.file, "w", newline="") as f:
-                csv.writer(f).writerow(
-                    ["appointment_id", "diagnosis", "treatment"]
-                )
+            with open(self.file, "r", encoding="utf-8") as f:
+                rows = list(csv.reader(f))
+                return int(rows[-1][0]) + 1 if len(rows) > 1 else 1
+        except: return 1
 
-    # FR: Record / Update Diagnosis
-    def record_diagnosis(self, appointment_id, diagnosis, treatment):
-        with open(self.file, "r") as f:
-            rows = list(csv.reader(f))
-
-        for row in rows[1:]:
-            if row[0] == str(appointment_id):
-                row[1] = diagnosis
-                row[2] = treatment
+    def add_or_update(self, aid, diag, med):
+        rows = self.list_records()
+        updated = False
+        for r in rows:
+            if str(r[1]) == str(aid):
+                r[2], r[3] = diag, med
+                updated = True
                 break
-        else:
-            rows.append([appointment_id, diagnosis, treatment])
+        if not updated:
+            rows.append([self._next_id(), aid, diag, med])
+        self._save(rows)
 
-        with open(self.file, "w", newline="") as f:
-            csv.writer(f).writerows(rows)
+    def list_records(self):
+        if not os.path.exists(self.file): return []
+        with open(self.file, "r", encoding="utf-8") as f:
+            return list(csv.reader(f))[1:]
 
-    # FR: View Diagnosis
-    def view_diagnosis(self, appointment_id):
-        with open(self.file, "r") as f:
-            return [
-                r for r in list(csv.reader(f))[1:]
-                if r[0] == str(appointment_id)
-            ]
+    def get_by_appointment(self, aid):
+        for r in self.list_records():
+            if str(r[1]) == str(aid): return r
+        return None
+
+    def delete_by_appointment(self, aid):
+        rows = self.list_records()
+        new = [r for r in rows if str(r[1]) != str(aid)]
+        self._save(new)
+
+    def _save(self, rows):
+        with open(self.file, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["record_id", "appointment_id", "diagnosis", "medication"])
+            w.writerows(rows)

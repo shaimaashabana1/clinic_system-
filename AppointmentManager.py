@@ -1,76 +1,64 @@
-import csv
-from datetime import datetime
+import csv, os
+from datetime import datetime, date
 
 class AppointmentManager:
     def __init__(self, file="appointments.csv"):
         self.file = file
-        self._init_file()
+        if not os.path.exists(self.file):
+            with open(self.file, "w", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow(["appointment_id", "patient_id", "doctor_id", "datetime"])
 
-    def _init_file(self):
+    def _next_id(self):
         try:
-            open(self.file, "r").close()
-        except FileNotFoundError:
-            with open(self.file, "w", newline="") as f:
-                csv.writer(f).writerow(
-                    ["appointment_id", "patient_id", "doctor_id", "date", "time"]
-                )
+            with open(self.file, "r", encoding="utf-8") as f:
+                rows = list(csv.reader(f))
+                return int(rows[-1][0]) + 1 if len(rows) > 1 else 1
+        except: return 1
 
-    def _generate_id(self):
-        with open(self.file, "r") as f:
-            return len(list(csv.reader(f)))
-
-    # FR: Date Validation
-    def validate_date(self, date):
+    def validate_date(self, dt):
         try:
-            datetime.strptime(date, "%Y-%m-%d")
+            datetime.strptime(dt, "%Y-%m-%d %H:%M")
             return True
-        except:
-            return False
+        except: return False
 
-    # FR: Book Appointment
-    def book_appointment(self, patient_id, doctor_id, date, time):
-        if not self.validate_date(date):
-            return None
-
-        aid = self._generate_id()
-        with open(self.file, "a", newline="") as f:
-            csv.writer(f).writerow([aid, patient_id, doctor_id, date, time])
+    def add_appointment(self, pid, did, dt):
+        if not self.validate_date(dt): return None
+        aid = self._next_id()
+        with open(self.file, "a", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow([aid, pid, did, dt])
         return aid
 
-    # FR: Update Appointment
-    def update_appointment(self, appointment_id, date=None, time=None):
-        with open(self.file, "r") as f:
-            rows = list(csv.reader(f))
+    def list_appointments(self):
+        if not os.path.exists(self.file): return []
+        with open(self.file, "r", encoding="utf-8") as f:
+            return list(csv.reader(f))[1:]
 
-        for row in rows[1:]:
-            if row[0] == str(appointment_id):
-                if date and self.validate_date(date):
-                    row[3] = date
-                if time:
-                    row[4] = time
+    def cancel_appointment(self, aid):
+        rows = self.list_appointments()
+        new = [a for a in rows if a[0] != str(aid)]
+        self._save(new)
 
-        with open(self.file, "w", newline="") as f:
-            csv.writer(f).writerows(rows)
+    def daily_agenda(self):
+        today = date.today().isoformat()
+        return [a for a in self.list_appointments() if a[3].startswith(today)]
 
-    # FR: Cancel Appointment
-    def cancel_appointment(self, appointment_id):
-        with open(self.file, "r") as f:
-            rows = list(csv.reader(f))
+    def doctor_schedule_today(self, did):
+        today = date.today().isoformat()
+        return [a for a in self.list_appointments() if str(a[2]) == str(did) and a[3].startswith(today)]
 
-        rows = [rows[0]] + [r for r in rows[1:] if r[0] != str(appointment_id)]
+    # --- الدوال اللي كانت ناقصة وعملت المشكلة ---
+    def delete_by_patient(self, pid):
+        rows = self.list_appointments()
+        new = [a for a in rows if str(a[1]) != str(pid)]
+        self._save(new)
 
-        with open(self.file, "w", newline="") as f:
-            csv.writer(f).writerows(rows)
+    def delete_by_doctor(self, did):
+        rows = self.list_appointments()
+        new = [a for a in rows if str(a[2]) != str(did)]
+        self._save(new)
 
-    # FR: Daily Agenda
-    def daily_agenda(self, date):
-        with open(self.file, "r") as f:
-            return [r for r in list(csv.reader(f))[1:] if r[3] == date]
-
-    # FR: Doctor Schedule
-    def doctor_schedule(self, doctor_id, date):
-        with open(self.file, "r") as f:
-            return [
-                r for r in list(csv.reader(f))[1:]
-                if r[2] == str(doctor_id) and r[3] == date
-            ]
+    def _save(self, rows):
+        with open(self.file, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["appointment_id", "patient_id", "doctor_id", "datetime"])
+            w.writerows(rows)

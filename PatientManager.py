@@ -1,63 +1,57 @@
-import csv
+import csv, os
 
 class PatientManager:
     def __init__(self, file="patients.csv"):
         self.file = file
-        self._init_file()
+        if not os.path.exists(self.file):
+            with open(self.file, "w", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow(["patient_id", "name", "age", "phone"])
 
-    def _init_file(self):
+    def _next_id(self):
         try:
-            open(self.file, "r").close()
-        except FileNotFoundError:
-            with open(self.file, "w", newline="") as f:
-                csv.writer(f).writerow(
-                    ["patient_id", "name", "age", "phone"]
-                )
+            with open(self.file, "r", encoding="utf-8") as f:
+                rows = list(csv.reader(f))
+                return int(rows[-1][0]) + 1 if len(rows) > 1 else 1
+        except: return 1
 
-    def _generate_id(self):
-        with open(self.file, "r") as f:
-            return len(list(csv.reader(f)))
-
-    # FR: Add Patient
     def add_patient(self, name, age, phone):
-        pid = self._generate_id()
-        with open(self.file, "a", newline="") as f:
+        pid = self._next_id()
+        with open(self.file, "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow([pid, name, age, phone])
         return pid
 
-    # FR: Search Patient
-    def search_patient(self, patient_id):
-        with open(self.file, "r") as f:
-            for row in list(csv.reader(f))[1:]:
-                if row[0] == str(patient_id):
-                    return row
+    def list_patients(self):
+        if not os.path.exists(self.file): return []
+        with open(self.file, "r", encoding="utf-8") as f:
+            return list(csv.reader(f))[1:]
+
+    def get_patient(self, pid):
+        for p in self.list_patients():
+            if str(p[0]).strip() == str(pid).strip(): return p
         return None
 
-    # FR: Update Patient
-    def update_patient(self, patient_id, name=None, age=None, phone=None):
-        with open(self.file, "r") as f:
-            rows = list(csv.reader(f))
+    def update_patient(self, pid, name=None, age=None, phone=None):
+        rows = self.list_patients()
+        updated = False
+        for p in rows:
+            if str(p[0]).strip() == str(pid).strip():
+                if name: p[1] = name
+                if age: p[2] = age
+                if phone: p[3] = phone
+                updated = True
+                break
+        if updated: self._save(rows)
+        return updated
 
-        for row in rows[1:]:
-            if row[0] == str(patient_id):
-                if name: row[1] = name
-                if age: row[2] = age
-                if phone: row[3] = phone
+    def delete_patient(self, pid):
+        rows = self.list_patients()
+        new = [p for p in rows if str(p[0]).strip() != str(pid).strip()]
+        if len(rows) == len(new): return False
+        self._save(new)
+        return True
 
-        with open(self.file, "w", newline="") as f:
-            csv.writer(f).writerows(rows)
-
-    # FR: Delete Patient (Cascade)
-    def delete_patient(self, patient_id):
-        with open(self.file, "r") as f:
-            rows = list(csv.reader(f))
-
-        rows = [rows[0]] + [r for r in rows[1:] if r[0] != str(patient_id)]
-
-        with open(self.file, "w", newline="") as f:
-            csv.writer(f).writerows(rows)
-
-    # FR: List Patients
-    def list_patients(self):
-        with open(self.file, "r") as f:
-            return list(csv.reader(f))[1:]
+    def _save(self, rows):
+        with open(self.file, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["patient_id", "name", "age", "phone"])
+            w.writerows(rows)

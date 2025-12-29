@@ -1,1 +1,2 @@
-appointment_id,patient_id,doctor_id,date,time
+appointment_id,patient_id,doctor_id,datetime
+1,2,2,2025-12-29 04:08
